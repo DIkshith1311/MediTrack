@@ -1,0 +1,26 @@
+node_modules/
+.next/
+.env*
+!.env.example
+*.tsbuildinfo
+__pycache__/
+.venv/
+coverage/
+
+.next-*/
+
+# Logs
+*.log
+
+# Playwright test output
+playwright-report/
+test-results/
+blob-report/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Python compiled files
+*.py[cod]
