@@ -1,0 +1,60 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: meditrack
+      MYSQL_USER: meditrack
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}
+    command: --log-bin-trust-function-creators=1
+    ports: ["127.0.0.1:${MYSQL_HOST_PORT:-3307}:3306"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/02-rules.sql:/docker-entrypoint-initdb.d/02-rules.sql:ro
+      - ./database/05-advanced-queries.sql:/docker-entrypoint-initdb.d/03-advanced.sql:ro
+      - ./database/04-rbac.sql:/docker-entrypoint-initdb.d/04-rbac.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -u meditrack -D meditrack -e 'SELECT 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  qdrant:
+    image: qdrant/qdrant:v1.17.0
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY}
+    ports: ["127.0.0.1:6333:6333"]
+    volumes: ["qdrant_data:/qdrant/storage"]
+  embedding:
+    build: ./services/embedding
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      HF_HOME: /models
+    volumes: ["model_cache:/models"]
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      start_period: 180s
+      interval: 10s
+      retries: 30
+  app:
+    build: .
+    profiles: ["full"]
+    environment:
+      AUTH_DATABASE_URL: mysql://meditrack_auth:${MYSQL_AUTH_PASSWORD:-}@mysql:3306/meditrack
+      ADMIN_DATABASE_URL: mysql://meditrack_admin:${MYSQL_ADMIN_PASSWORD:-}@mysql:3306/meditrack
+      STAFF_DATABASE_URL: mysql://meditrack_staff:${MYSQL_STAFF_PASSWORD:-}@mysql:3306/meditrack
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      EMBEDDING_URL: http://embedding:8000
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      HOSTNAME: 0.0.0.0
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      mysql: {condition: service_healthy}
+      embedding: {condition: service_healthy}
+      qdrant: {condition: service_started}
+volumes:
+  mysql_data:
+  qdrant_data:
+  model_cache:
