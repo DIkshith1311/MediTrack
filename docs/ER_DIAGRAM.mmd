@@ -1,0 +1,53 @@
+erDiagram
+ USERS ||--o{ SESSIONS : authenticates
+ USERS ||--o{ SALES : bills
+ USERS ||--o{ AUDIT_EVENTS : performs
+ SUPPLIERS ||--o{ BATCHES : supplies
+ MEDICINES ||--o{ BATCHES : stocked_in
+ BATCHES ||--o{ SALE_ITEMS : allocated_to
+ SALES ||--o{ SALE_ITEMS : contains
+ BATCHES ||--o{ STOCK_MOVEMENTS : logs
+ USERS { int id PK
+ string email UK
+ string password_hash
+ enum role }
+ MEDICINES { int id PK
+ string brand
+ string generic_name
+ string strength
+ string dosage_form
+ boolean otc
+ int reorder_level }
+ SUPPLIERS { int id PK
+ string name UK }
+ BATCHES { int id PK
+ int medicine_id FK
+ int supplier_id FK
+ date expiry_date
+ int quantity
+ int selling_price_paise }
+ SALES { bigint id PK
+ int user_id FK
+ string request_key UK
+ enum status
+ bigint total_paise }
+ SALE_ITEMS { bigint id PK
+ bigint sale_id FK
+ int batch_id FK
+ int quantity
+ int unit_price_paise
+ bigint line_total_paise }
+ SESSIONS { string token_hash PK
+ int user_id FK
+ datetime expires_at }
+ STOCK_MOVEMENTS { bigint id PK
+ int batch_id FK
+ int quantity_delta }
+ AUDIT_EVENTS { bigint id PK
+ int user_id FK
+ string action
+ bigint entity_id }
+
+ LOGIN_ATTEMPTS { string identity_hash PK
+ int failures
+ datetime window_start }
